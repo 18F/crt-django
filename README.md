@@ -4,11 +4,6 @@ Install Docker
 
     https://www.docker.com/get-started
 
-
-Use a long, random string for your secret key and save it in your local environment.
-
-    export SECRET_KEY=''
-
 To build the project
 
     docker-compose up -d --build

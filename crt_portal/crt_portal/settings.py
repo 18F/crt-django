@@ -186,3 +186,5 @@ COMPRESS_OFFLINE = True
 
 if environment == 'LOCAL':
     from .local_settings import *
+
+    SECRET_KEY='secret'
