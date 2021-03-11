@@ -5,7 +5,7 @@ from .views import (ActionsView, index_view, ShowView, ProFormView,
                     PrintView, ProfileView)
 from .forms import ProForm
 # new
-from .waiver_views import WaiverFormView, waiver_index_view
+from .waiver_views import WaiverFormView, waiver_index_view, ShowWaiverView
 from .waiver_form import WaiverForm
 
 
@@ -24,6 +24,7 @@ urlpatterns = [
     path('comment/report/<int:report_id>/', SaveCommentView.as_view(), name='save-report-comment'),
     path('trends/', TrendView.as_view(), name='trends'),
     path('waiver', WaiverFormView.as_view([WaiverForm]), name='waiver-form'),
+    path('view-waiver/<int:id>/', ShowWaiverView.as_view(), name='individual-waiver'),
     path('view-waiver/', waiver_index_view, name='waiver-forms-index'),
 
 ]

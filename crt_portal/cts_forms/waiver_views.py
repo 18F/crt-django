@@ -3,9 +3,10 @@ import urllib.parse
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 from django.utils.translation import gettext_lazy as _
-from django.shortcuts import redirect, reverse, render
+from django.shortcuts import get_object_or_404, redirect, reverse, render
 from django.db.models import F
 from django.core.paginator import Paginator
+from django.views.generic import View
 
 from formtools.wizard.views import SessionWizardView
 
@@ -13,7 +14,9 @@ from .models import AmericaReport
 from .waiver_filters import report_filter
 from .waiver_sorts import report_sort
 from .page_through import pagination
-from .waiver_form import Filters
+from .waiver_form import Filters, ResponseActions, ReportEditForm
+from .forms import BulkActionsForm, CommentActions, ContactEditForm, ComplaintActions, Review, PrintActions
+from .views import reconstruct_query
 
 
 
@@ -65,7 +68,7 @@ def waiver_index_view(request):
     #     request.GET = request.GET.copy()
     #     global_section_filter = request.user.profile.intake_filters.split(',')
 
-    #     # If assigned_section is NOT specificied in request, use filter from profile
+    #     # If assigned_section is NOT specified in request, use filter from profile
     #     if 'assigned_section' not in request.GET:
     #         request.GET.setlist('assigned_section', global_section_filter)
 
@@ -134,4 +137,153 @@ def waiver_index_view(request):
         'return_url_args': all_args_encoded,
     }
 
-    return render(request, 'forms/complaint_view/index/index.html', final_data)
+    return render(request, 'forms/complaint_view/index/waiver-index.html', final_data)
+
+
+def serialize_data(report, request, report_id):
+    output = {
+        'actions': ComplaintActions(instance=report),
+        'responses': ResponseActions(instance=report),
+        'comments': CommentActions(),
+        'print_options': PrintActions(),
+        # test
+        'activity_stream': {},
+        'data': report,
+        'return_url_args': request.GET.get('next', ''),
+        'index': request.GET.get('index', ''),
+        # 'summary': report.get_summary,
+        # for print media consumption
+        'print_actions': {},
+        'questions': Review.question_text,
+    }
+
+    return output
+
+def setup_filter_parameters(report, querydict):
+    """
+    If we have the `next` and `index` query parameters, then update
+    the filter count, previous query, and next query so that filter
+    navigation can continue apace.
+    """
+    output = {}
+    return_url_args = querydict.get('next', '')
+    index = querydict.get('index', None)
+
+    if index == '':
+        index = None
+
+    if return_url_args and index is not None:
+        requested_query = reconstruct_query(return_url_args)
+        requested_ids = list(requested_query.values_list('id', flat=True))
+
+        index = int(index)
+        if report.id in requested_ids:
+            # override in case user input an invalid index
+            index = requested_ids.index(report.id)
+            output.update({
+                'filter_current': index + 1,
+            })
+        else:
+            # this report is no longer in the filter, but we want
+            # to move backwards so that the previously next report
+            # becomes the actual next report.
+            index -= 1
+
+        try:
+            previous_id = requested_ids[index - 1] if index > 0 else None
+            next_id = requested_ids[index + 1] if index < len(requested_ids) - 1 else None
+            next_query = urllib.parse.quote(return_url_args)
+        except IndexError:
+            # When we cannot determine the next report page we are
+            # removing the next button.
+            return {}
+
+        output.update({
+            'filter_count': requested_query.count(),
+            'filter_previous': previous_id,
+            'filter_next': next_id,
+            'filter_previous_query': f'?next={next_query}&index={index - 1}',
+            'filter_next_query': f'?next={next_query}&index={index + 1}',
+        })
+
+    return output
+
+
+class ShowWaiverView(LoginRequiredMixin, View):
+    forms = {
+        form.CONTEXT_KEY: form
+        for form in [ContactEditForm, ComplaintActions, ReportEditForm]
+    }
+
+    def get(self, request, id):
+        report = get_object_or_404(AmericaReport, pk=id)
+        output = serialize_data(report, request, report.id)
+        contact_form = ContactEditForm(instance=report)
+        details_form = ReportEditForm(instance=report)
+        filter_output = setup_filter_parameters(report, request.GET)
+        output.update({
+            'contact_form': contact_form,
+            'details_form': details_form,
+            # test
+            'email_enabled': False,
+            **filter_output,
+        })
+        return render(request, 'forms/complaint_view/show/waiver_index.html', output)
+
+    def get_form(self, request, report):
+        form_type = request.POST.get('type')
+        if not form_type:
+            raise SuspiciousOperation("Invalid form data")
+        return self.forms[form_type](request.POST, instance=report), form_type
+
+    def post(self, request, id):
+        """
+        Multiple forms are provided on the page
+        Accept only the submitted form and discard any other inbound changes
+        """
+        report = get_object_or_404(Report, pk=id)
+
+        form, inbound_form_type = self.get_form(request, report)
+        if form.is_valid() and form.has_changed():
+            report = form.save(commit=False)
+
+            # # Reset Assignee and Status if assigned_section is changed
+            # if 'assigned_section' in form.changed_data:
+            #     report.status_assignee_reset()
+
+            # # district and location are on different forms so handled here.
+            # # If the incident location changes, update the district.
+            # # District can be overwritten in the drop down.
+            # # If there was a location change but no new match for district, don't override.
+            # if 'district' not in form.changed_data:
+            #     current_district = report.district
+            #     assigned_district = report.assign_district()
+            #     if assigned_district and current_district != assigned_district:
+            #         report.district = assigned_district
+            #         description = f'Updated from "{current_district}" to "{report.district}"'
+            #         add_activity(request.user, "District:", description, report)
+
+            report.save()
+            form.update_activity_stream(request.user)
+            messages.add_message(request, messages.SUCCESS, form.success_message())
+
+            url = preserve_filter_parameters(report, request.POST)
+            return redirect(url)
+        else:
+            output = serialize_data(report, request, id)
+            filter_output = setup_filter_parameters(report, request.POST)
+            output.update({inbound_form_type: form, **filter_output})
+
+            try:
+                fail_message = form.FAIL_MESSAGE
+            except AttributeError:
+                fail_message = 'No updates applied'
+            messages.add_message(request, messages.ERROR, fail_message)
+
+            # provide new forms for those not submitted
+            for form_type, form in self.forms.items():
+                if form_type != inbound_form_type:
+                    output.update({form_type: form(instance=report)})
+
+            return render(request, 'forms/complaint_view/show/waiver_index.html', output)
+

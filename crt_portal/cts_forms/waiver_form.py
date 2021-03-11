@@ -7,13 +7,41 @@ from django.forms import (BooleanField, CharField, CheckboxInput, ChoiceField, D
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 
-from .models import AmericaReport
+from .models import AmericaReport, WaiverResponseTemplate
 from .model_variables import STATES_AND_TERRITORIES
 from .phone_regex import phone_validation_regex
 from .model_variables import CONTACT_PHONE_INVALID_MESSAGE
-from .widgets import UsaCheckboxSelectMultiple, CrtDateInput
+from .widgets import UsaCheckboxSelectMultiple, CrtDateInput, DataAttributesSelect
+from .forms import ActivityStreamUpdater
 
 User = get_user_model()
+
+
+class ResponseActions(Form):
+
+    def __init__(self, *args, **kwargs):
+        self.report = kwargs.pop('instance')
+        Form.__init__(self, *args, **kwargs)
+        # set up select options with dataset attributes
+        templates = WaiverResponseTemplate.objects.order_by('title')
+        data = {
+            template.id: {
+                'description': template.render_subject(self.report),
+                'content': template.render_body(self.report),
+            }
+            for template in templates
+        }
+        attrs = {
+            "id": "intake_select",
+            "class": "usa-select",
+            "aria-label": "template selection"
+        }
+        self.fields['templates'] = ModelChoiceField(
+            queryset=templates,
+            empty_label="(no template chosen)",
+            widget=DataAttributesSelect(data=data, attrs=attrs),
+            required=False,
+        )
 
 
 class WaiverForm(ModelForm):
@@ -237,3 +265,30 @@ class Filters(ModelForm):
                 'in_future': _("Create date cannot be in the future."),
             },
         }
+
+class ReportEditForm(WaiverForm, ActivityStreamUpdater):
+    CONTEXT_KEY = "details_form"
+    FAIL_MESSAGE = "Failed to update complaint details."
+    SUCCESS_MESSAGE = "Successfully updated complaint details."
+
+    # # Summary fields
+    # summary = CharField(required=False, strip=True, widget=Textarea(attrs={'class': 'usa-textarea'}))
+    # summary_id = IntegerField(required=False, widget=HiddenInput())
+
+    class Meta(WaiverForm.Meta):
+        """
+        Extend ProForm to capture field definitions from component forms, excluding those which should not be editable here
+        """
+        exclude = ['contact_address_line_1', 'contact_address_line_2', 'contact_state',
+                   'contact_city', 'contact_zip']
+
+    def success_message(self):
+        return self.SUCCESS_MESSAGE
+
+    def _set_to_select_widget(self, field):
+        """Set the provided 'field's widget to Select"""
+        self.fields[field] = TypedChoiceField(
+            choices=self.fields[field].choices,
+            widget=Select(attrs={'class': 'usa-select'}),
+            required=False,
+        )

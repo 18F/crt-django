@@ -74,6 +74,9 @@ class AmericaReport(models.Model):
     final_approval_date = models.DateTimeField(blank=True, null=True)
     closed_date = models.DateTimeField(blank=True, null=True, help_text="The Date this report's status was most recently set to \"Closed\"")
 
+    def activity(self):
+        return self.target_actions.exclude(verb__contains='comment:')
+
 
 class CommentAndSummary(models.Model):
     note = models.CharField(max_length=7000, null=False, blank=False,)
@@ -468,6 +471,47 @@ class ResponseTemplate(models.Model):
         section_choices_es = dict(SECTION_CHOICES_ES)
         return Context({
             'record_locator': report.public_id,
+            'addressee': report.addressee,
+            'date_of_intake': format_date(report.create_date, format='long', locale='en_US'),
+            'outgoing_date': format_date(today, locale='en_US'),  # required for paper mail
+            'section_name': section_choices.get(report.assigned_section, "no section"),
+            # spanish translations
+            'es': {
+                'addressee': report.addressee_es,
+                'date_of_intake': format_date(report.create_date, format='long', locale='es_ES'),
+                'outgoing_date': format_date(today, locale='es_ES'),
+                'section_name': section_choices_es.get(report.assigned_section, "no section"),
+            }
+        })
+
+    def render_subject(self, report):
+        template = Template(self.subject)
+        context = self.available_report_fields(report)
+        return escape(template.render(context))
+
+    def render_body(self, report):
+        template = Template(self.body)
+        context = self.available_report_fields(report)
+        return escape(template.render(context))
+
+    def __str__(self):
+        return self.title
+
+
+class WaiverResponseTemplate(models.Model):
+    title = models.CharField(max_length=100, null=False, blank=False, unique=True,)
+    subject = models.CharField(max_length=150, null=False, blank=False,)
+    body = models.TextField(null=False, blank=False,)
+
+    def available_report_fields(self, report):
+        """
+        Only permit a small subset of report fields
+        """
+        today = datetime.today()
+        section_choices = dict(SECTION_CHOICES)
+        section_choices_es = dict(SECTION_CHOICES_ES)
+        return Context({
+            'record_locator': report.id,
             'addressee': report.addressee,
             'date_of_intake': format_date(report.create_date, format='long', locale='en_US'),
             'outgoing_date': format_date(today, locale='en_US'),  # required for paper mail
