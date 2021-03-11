@@ -34,6 +34,59 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
+class AmericaReport(models.Model):
+    # Applicant
+    contact_first_name = models.CharField(max_length=225, null=True, blank=True)
+    contact_last_name = models.CharField(max_length=225, null=True, blank=True)
+    contact_email = models.EmailField(null=True, blank=True)
+    contact_phone = models.CharField(
+        validators=[RegexValidator(phone_validation_regex, message=CONTACT_PHONE_INVALID_MESSAGE)],
+        max_length=225,
+        null=True,
+        blank=True
+    )
+    contact_address_line_1 = models.CharField(max_length=225, null=True, blank=True)
+    contact_address_line_2 = models.CharField(max_length=225, null=True, blank=True)
+    contact_city = models.CharField(max_length=700, null=True, blank=True)
+    contact_state = models.CharField(max_length=100, null=True, blank=True, choices=STATES_AND_TERRITORIES)
+    contact_zip = models.CharField(max_length=10, null=True, blank=True)
+    agency = models.CharField(max_length=225, null=True, blank=True)
+    # product
+    product_name = models.CharField(max_length=225, null=True, blank=True)
+    product_company = models.CharField(max_length=225, null=True, blank=True)
+    parent_company = models.CharField(max_length=225, null=True, blank=True)
+    unique_entity_identifer = models.CharField(max_length=225, null=True, blank=True)
+    duns_number = models.CharField(max_length=225, null=True, blank=True)
+    country_of_origin = models.CharField(max_length=225, null=True, blank=True)
+    purpose_of_product = models.CharField(max_length=7000, null=False, blank=False,)
+    market_justification = models.CharField(max_length=7000, null=False, blank=False,)
+    # metadata
+    create_date = models.DateTimeField(auto_now_add=True)
+    modified_date = models.DateTimeField(auto_now=True)
+    assigned_to = models.ForeignKey(User, blank=True, null=True, related_name="product_reports", on_delete=models.CASCADE)
+    status = models.TextField(choices=(
+        ('new', 'New'),
+        ('open', 'Open'),
+        ('denied', 'Denied'),
+        ('approved', 'Approved')
+    ), default='new')
+    approver_final = models.CharField(max_length=1000, null=True, blank=True)
+    final_approval_date = models.DateTimeField(blank=True, null=True)
+    closed_date = models.DateTimeField(blank=True, null=True, help_text="The Date this report's status was most recently set to \"Closed\"")
+
+
+class CommentAndSummary(models.Model):
+    note = models.CharField(max_length=7000, null=False, blank=False,)
+    author = models.CharField(max_length=1000, null=False, blank=False,)
+    modified_date = models.DateTimeField(auto_now=True)
+    create_date = models.DateTimeField(auto_now_add=True)
+    is_summary = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name_plural = 'Comments and summaries'
+
+# Unused code from the previous app below
+
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     intake_filters = models.TextField(max_length=500, blank=True)
@@ -366,6 +419,17 @@ class EmailReportCount(models.Model):
         """This model is tied to a view created from migration 93"""
         managed = False
         db_table = 'email_report_count'
+
+
+class WaiverEmailReportCount(models.Model):
+    """see the total number of reports that are associated with the contact_email for each report"""
+    report = models.OneToOneField(AmericaReport, primary_key=True, on_delete=models.CASCADE, related_name='waiver_email_report_count')
+    email_count = models.IntegerField()
+
+    class Meta:
+        """This model is tied to a view created from migration 93"""
+        managed = False
+        db_table = 'waiver_email_report_count'
 
 
 class Trends(models.Model):

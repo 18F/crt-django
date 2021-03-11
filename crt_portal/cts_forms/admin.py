@@ -8,7 +8,7 @@ from django.db.models import Prefetch
 from django.http import StreamingHttpResponse
 
 from .models import (CommentAndSummary, HateCrimesandTrafficking, Profile,
-                     ProtectedClass, Report, ResponseTemplate)
+                     ProtectedClass, Report, ResponseTemplate, AmericaReport)
 from .signals import get_client_ip
 
 logger = logging.getLogger(__name__)
@@ -166,3 +166,6 @@ admin.site.register(Profile)
 admin.site.unregister(Action)
 admin.site.unregister(Follow)
 admin.site.register(Action, ActionAdmin)
+
+# new
+admin.site.register(AmericaReport)
