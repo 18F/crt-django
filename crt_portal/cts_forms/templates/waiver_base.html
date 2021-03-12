@@ -10,11 +10,11 @@
       <meta charset="utf-8">
       <meta http-equiv="X-UA-Compatible" content="IE=edge">
 
-      <link rel="canonical" href="https://civilrights.justice.gov{{ request.path }}">
       <meta name="viewport" content="width=device-width, initial-scale=1">
 
-      <meta property="og:url" content="https://civilrights.justice.gov{{ request.path }}" />
       <meta property="og:type" content="website" />
+      <link rel="icon" href="{% static "img/us_flag_small.png" %}">
+      <link rel="stylesheet" href="{% static "css/compiled/styles.css" %}">
 
       {% block meta_title %}
         {% trans 'Buy American | General Services Administration' as meta_title %}
@@ -44,9 +44,6 @@
     {% block page_title %}
       <title>{% trans "Buy American | General Services Administration" %}</title>
     {% endblock %}
-
-    <link rel="icon" href="{% static "img/favicon.png" %}">
-    <link rel="stylesheet" href="{% static "css/compiled/styles.css" %}">
 
     {% block head %}{% endblock %}
   </head>
