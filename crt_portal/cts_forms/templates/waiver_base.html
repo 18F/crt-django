@@ -1,0 +1,119 @@
+{% load static %}
+{% load i18n %}
+{% load get_env %}
+{% get_current_language as LANGUAGE_CODE %}
+<!DOCTYPE html>
+<html lang="{{LANGUAGE_CODE}}">
+ <head>
+
+    {% block meta %}
+      <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+      <link rel="canonical" href="https://civilrights.justice.gov{{ request.path }}">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+
+      <meta property="og:url" content="https://civilrights.justice.gov{{ request.path }}" />
+      <meta property="og:type" content="website" />
+
+      {% block meta_title %}
+        {% trans 'Buy American | General Services Administration' as meta_title %}
+        <meta property="og:title" content="{{meta_title}}" />
+        <meta property="name" content="{{meta_title}}" />
+      {% endblock meta_title %}
+
+      {% block meta_analytics %}
+        {% environment as env %}
+        {% if env == "PRODUCTION" %}
+          <!-- add analytics here -->
+        {% endif %}
+      {% endblock %}
+
+      {% block meta_description %}
+        {% trans 'Helping the US Government buy American' %}
+        <meta property="og:description" content="{{meta_description}}" />
+        <meta name="description" content="{{meta_description}}" />
+      {% endblock meta_description %}
+
+      <meta property="og:image" content="{% static 'img/facebook-og.png' %}" />
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:image" content="{% static 'img/twitter-card.png' %}" />
+
+    {% endblock meta %}
+
+    {% block page_title %}
+      <title>{% trans "Buy American | General Services Administration" %}</title>
+    {% endblock %}
+
+    <link rel="icon" href="{% static "img/favicon.png" %}">
+    <link rel="stylesheet" href="{% static "css/compiled/styles.css" %}">
+
+    {% block head %}{% endblock %}
+  </head>
+  <body {% block body_class %}{% endblock %}>
+    <a class="usa-skipnav" href="#main-content">{% trans "Skip to main content" %}</a>
+
+    {% block usa_banner %}
+      {% include "partials/banner/usa_banner.html" %}
+    {% endblock %}
+
+    {% environment as env %}
+    {% if env != "PRODUCTION" %}
+      <div class="crt-header--warning-pii">
+        <div class="grid-container">
+          <div class="grid-row grid-gap">
+            <div class="grid-col-12">
+              <div class="usa-alert usa-alert--warning">
+                <div class="usa-alert__body">
+                  <h1 class="usa-alert__heading">Test site</h1>
+                  <p class="usa-alert__text">
+                    This is a test site. Do not enter PII.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    {% block page_header %}{% endblock %}
+
+    <main id="main-content" {% block main_class %}{% endblock %}>
+      {% block content %} {% endblock %}
+    </main>
+
+    {% block usa_footer %}
+    <footer class="usa-footer usa-footer--slim">
+      <div class="usa-footer__secondary-section">
+        <div class="grid-container usa-footer__logo-section">
+          <div class="usa-footer__logo grid-row grid-gap-2">
+            <div class="grid-col-auto">
+              <img src="{% static "img/doj-logo-footer.png" %}"
+                   alt=""
+                   height="64" />
+            </div>
+            <div class="grid-col-auto">
+              <p class="usa-footer__logo-heading">
+                {% trans "General Services Administration" %}
+              </p>
+              <p class="usa-footer__logo-subheading">
+                {% trans "Helping people buy American" %}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {% block footer_extra %}
+      {% endblock footer_extra %}
+    </footer>
+    {% endblock %}
+    <script src="{% static 'js/url_params_polyfill.js' %}"></script>
+    <script src="{% static 'js/uswds.min.js' %}"></script>
+    <script src="{% static 'js/focus_alert.js' %}"></script>
+    <script src="{% static 'js/clear_error_class.js' %}"></script>
+    {% block page_js %}{% endblock %}
+
+  </body>
+</html>

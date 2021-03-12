@@ -58,7 +58,8 @@ class WaiverFormView(LoginRequiredMixin, SessionWizardView):
         report = self.get_all_cleaned_data()
         americareport = AmericaReport.objects.create(**report)
 
-        return redirect(reverse('crt_forms:crt-forms-show', kwargs={'id': americareport.pk}))
+        return redirect(reverse('crt_forms:individual-waiver', kwargs={'id': americareport.pk}))
+
 
 @login_required
 def waiver_index_view(request):

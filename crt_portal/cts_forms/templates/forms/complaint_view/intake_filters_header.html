@@ -11,8 +11,16 @@
   </div>
 
   <div class="intake-actions">
-    {% include 'forms/complaint_view/index/filters/checkbox_section_filter.html' %}
-    <a class="add-record" href="/form/new/" label="create record" name="Create record">
+    {% if not no_section %}
+      {% include 'forms/complaint_view/index/filters/checkbox_section_filter.html' %}
+    {% endif %}
+    <a class="add-record"
+    {% if url %}
+      href="{{ url }}"
+    {% else %}
+      href="/form/new/"
+    {% endif %}
+    label="create record" name="Create record">
       <img src="{% static 'img/intake-icons/ic_add.svg'%}" alt="" class="icon" />
       Add new record
     </a>

@@ -76,7 +76,9 @@ urlpatterns = auth + [
         },
     ), name='crt_report_form'),
     path('privacy-policy', TemplateView.as_view(template_name="privacy.html"), name='privacy_policy'),
-    path('', LandingPageView.as_view(), name='crt_landing_page'),
+    # test
+    path('x', LandingPageView.as_view(), name='crt_landing_page'),
+    path('', TemplateView.as_view(template_name='waiver_landing.html')),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 handler400 = 'cts_forms.views.error_400'

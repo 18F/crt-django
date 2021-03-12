@@ -1,0 +1,117 @@
+{% extends "forms/complaint_view/show/card.html" %}
+{% load commercial_public_space_view %}
+{% load correctional_facility_view %}
+{% load employer_info_view %}
+{% load static %}
+
+{% block title %}Product Information{% endblock %}
+{% block extra_title %}
+<!-- not editable yet -->
+<!-- <button aria-label="edit report details" id="edit-details-btn" class="usa-button usa-button--unstyled button--edit margin-left-auto" type="button">Edit</button> -->
+{% endblock %}
+{% block extra_classes %}crt-complaint-card{% endblock %}
+
+{% block icon %}
+<img src="{% static "img/intake-icons/ic_folder.svg" %}" alt="icon" class="icon" />
+{% endblock %}
+
+{% block card_content %}
+<form id="details-edit-form" class="usa-form " method="post" novalidate>
+
+<div class="crt-current-summary blue-background usa-prose">
+  <div id="current-summary" class="details">
+    {% if summary %}
+    <label class="bold backend-blue" for="current-summary-text">
+      Summary
+    </label>
+    <div id="current-summary-text" >
+      {{ summary.note | linebreaks }}
+    </div>
+    {% endif %}
+  </div>
+
+  <div id="report-summary" class="details-edit {% if summary %}display-none{% else %}always-display{% endif %}">
+    <label for="{{details_form.summary.id_for_label}}" class="bold backend-blue">
+      {{details_form.summary.label}}
+    </label>
+    {{details_form.summary}}
+    {{details_form.summary_id}}
+  </div>
+</div>
+
+<div class="report-details">
+    {% csrf_token %}
+    <input type="hidden" value="{{ return_url_args }}" name="next" id="next-{{ id_name }}" />
+    <input type="hidden" value="{{ index }}" name="index" id="index-{{ id_name }}" />
+    <table class="usa-table usa-table--borderless complaint-card-table">
+      <tr>
+        <th><label for="{{details_form.agency.id_for_label}}">Agency</label></th>
+        <td>
+          {{data.agency|default:"-"}}
+        </td>
+      </tr>
+      <tr>
+        <th><label for="{{details_form.product_name.id_for_label}}">Product</label></th>
+        <td>
+          {{data.product_name|default:"-"}}
+        </td>
+      </tr>
+      <tr>
+        <th><label for="{{details_form.product_company.id_for_label}}">Product Company</label></th>
+        <td>
+          {{data.product_company|default:"-"}}
+          {% if data.parent_company %}
+            , ({{data.parent_company|default:"-"}})
+          {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <th><label for="{{details_form.duns_nuimber.id_for_label}}">DUNS Number</label></th>
+        <td>
+          {{data.duns_number|default:"-"}}
+        </td>
+      </tr>
+      <tr>
+        <th><label for="{{details_form.unique_entity_identifer.id_for_label}}">Unique Entity Identifier</label></th>
+        <td>
+          {{data.unique_entity_identifer|default:"-"}}
+        </td>
+      </tr>
+      <tr>
+        <th><label for="{{details_form.country_of_origin.id_for_label}}">Country of Origin</label></th>
+        <td>
+          {{data.country_of_origin|default:"-"}}
+        </td>
+      </tr>
+      <tr>
+        <th><label for="{{details_form.purpose_of_product.id_for_label}}">Purpose of Product</label></th>
+        <td>
+          {{data.purpose_of_product|default:"-"}}
+        </td>
+      </tr>
+      <tr>
+        <th>Date of submission</th>
+        <td>
+          <div class="details {% if details_form.errors %}display-none{% endif %}">
+          {{ data.create_date }}
+          </div>
+        </td>
+      </tr>
+      </tr>
+    </table>
+    <button aria-label="update complaint details"
+            class="usa-button {% if not details_form.errors and summary %}display-none{% endif %} {% if not summary %}always-display{% endif %}"
+            disabled
+            type="submit"
+            name="type" value="{{details_form.CONTEXT_KEY}}">
+            Save
+    </button>
+    <button id='details-edit-cancel'
+            class="usa-button usa-button--unstyled button--cancel {% if not details_form.errors %}display-none{% endif %}"
+            type="button">
+            Cancel
+    </button>
+  </div>
+</form>
+
+{% endblock %}

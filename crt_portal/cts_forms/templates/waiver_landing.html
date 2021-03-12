@@ -1,0 +1,191 @@
+{% load static %}
+{% load i18n %}
+{% load get_env %}
+{% get_current_language as LANGUAGE_CODE %}
+<!DOCTYPE html>
+<html lang="{{LANGUAGE_CODE}}">
+ <head>
+
+    {% block meta %}
+      <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <!-- <meta property="og:url" content="https://civilrights.justice.gov{{ request.path }}" /> -->
+      <meta property="og:type" content="website" />
+      <link rel="icon" href="{% static "img/us_flag_small.png" %}">
+
+      {% block meta_title %}
+        {% trans 'Buy American' as meta_title %}
+        <meta property="og:title" content="{{meta_title}}" />
+        <meta property="name" content="{{meta_title}}" />
+      {% endblock meta_title %}
+
+      {% block meta_analytics %}
+        {% environment as env %}
+        {% if env == "PRODUCTION" %}
+         <!-- to come -->
+        {% endif %}
+      {% endblock %}
+
+      {% block meta_description %}
+        {% trans 'Ensuring the Future Is Made in All of America - by All of America’s Workers' as meta_description %}
+        <meta property="og:description" content="{{meta_description}}" />
+        <meta name="description" content="{{meta_description}}" />
+      {% endblock meta_description %}
+
+      <meta property="og:image" content="{% static 'img/facebook-og.png' %}" />
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:image" content="{% static 'img/twitter-card.png' %}" />
+
+    {% endblock meta %}
+
+    {% block page_title %}
+      <title>{% trans "Buy American | General Services Administration" %}</title>
+    {% endblock %}
+
+    <link rel="icon" href="{% static "img/favicon.png" %}">
+    <link rel="stylesheet" href="{% static "css/compiled/styles.css" %}">
+
+    {% block head %}{% endblock %}
+  </head>
+  <body {% block body_class %}{% endblock %}>
+    <a class="usa-skipnav" href="#main-content">{% trans "Skip to main content" %}</a>
+
+    {% block usa_banner %}
+      {% include "partials/banner/usa_banner.html" %}
+    {% endblock %}
+
+<div class="usa-overlay"></div>
+<header class="usa-header usa-header--extended margin-bottom-4"><div class="usa-navbar">
+  <div class="usa-logo" id="extended-logo">
+    <h2 class="font-heading-xl margin-top-0 tablet:margin-bottom-0"><a href="/" title="Home" aria-label="Home">Buy American</a></h2>
+  </div>
+  <button class="usa-menu-btn">Menu</button>
+</div>
+<!-- <nav aria-label="Primary navigation" class="usa-nav">
+    <div class="usa-nav__inner"><button class="usa-nav__close"><img src="/assets/img/usa-icons/close.svg" role="img" alt="close"></button>
+<ul class="usa-nav__primary usa-accordion"><li class="usa-nav__primary-item">
+    <button class="usa-accordion__button usa-nav__link  usa-current" aria-expanded="false" aria-controls="extended-nav-section-one"><span>Current section</span></button>
+    <ul id="extended-nav-section-one" class="usa-nav__submenu"><li class="usa-nav__submenu-item">
+              <a href="#" class=""> Navigation link</a>
+            </li><li class="usa-nav__submenu-item">
+              <a href="#" class=""> Navigation link</a>
+            </li><li class="usa-nav__submenu-item">
+              <a href="#" class=""> Navigation link</a>
+            </li></ul></li><li class="usa-nav__primary-item">
+    <button class="usa-accordion__button usa-nav__link" aria-expanded="false" aria-controls="extended-nav-section-two"><span>Section</span></button>
+    <ul id="extended-nav-section-two" class="usa-nav__submenu"><li class="usa-nav__submenu-item">
+              <a href="#" class=""> Navigation link</a>
+            </li><li class="usa-nav__submenu-item">
+              <a href="#" class=""> Navigation link</a>
+            </li><li class="usa-nav__submenu-item">
+              <a href="#" class=""> Navigation link</a>
+            </li></ul></li><li class="usa-nav__primary-item">
+    <a class="usa-nav__link" href="javascript:void(0)"><span>Simple link</span></a>
+    </li></ul><div class="usa-nav__secondary">
+  <ul class="usa-nav__secondary-links"><li class="usa-nav__secondary-item">
+      <a href="">Secondary link</a>
+    </li><li class="usa-nav__secondary-item">
+      <a href="">Another secondary link</a>
+    </li></ul><form class="usa-search usa-search--small " role="search">
+  <label class="usa-sr-only" for="extended-search-field-small">Search small</label>
+  <input class="usa-input" id="extended-search-field-small" type="search" name="search">
+  <button class="usa-button" type="submit"><span class="usa-sr-only">Search</span></button>
+</form>
+</div>
+</div>
+  </nav> -->
+</header>
+
+
+
+
+<main id="main-content">
+  <section class="usa-hero" aria-label="Introduction">
+  <div class="grid-container">
+    <div class="usa-hero__callout">
+      <h1 class="usa-hero__heading"><span class="usa-hero__heading--alt">Explore Data:</span>Buy American Public Dataset</h1><p>Once there is a public data page, that will be linked below.</p><a class="usa-button" href="javascript:void(0)"></a>
+    </div>
+    <div><a class="usa-button usa-button--big crt-button--large" href="#report-a-violation">{% trans "See Data" %}</a></div>
+  </div>
+</section>
+
+
+
+  <section class="grid-container usa-section">
+    <div class="grid-row grid-gap">
+      <div class="tablet:grid-col-4">
+        <h2 class="font-heading-xl margin-top-0 tablet:margin-bottom-0">Ensuring the Future Is Made in All of America - by All of America’s Workers</h2>
+      </div>
+      <div class="tablet:grid-col-8 usa-prose">
+        <p>The United States Government should, whenever possible, procure goods, products, materials, and services from sources that will help American businesses compete in strategic industries and help America’s workers thrive.  Additionally, to promote an accountable and transparent procurement policy, each agency should vest waiver issuance authority in senior agency leadership, where appropriate and consistent with applicable law.</p>
+
+      </div>
+    </div>
+  </section>
+
+
+  <section class="usa-graphic-list usa-section usa-section--dark">
+  <div class="grid-container">
+    <div class="usa-graphic-list__row grid-row grid-gap">
+      <div class="usa-media-block tablet:grid-col">
+        <img class="usa-media-block__img"  src="/static/img/circle-124.png" alt="Alt text">
+        <div class="usa-media-block__body">
+          <h2 class="usa-graphic-list__heading">Buy American Executive Order</h2>
+          <p>Executive Order 14005, officially titled Ensuring the Future Is Made in All of America by All of America's Workers, is an executive order signed by U.S. President Joe Biden on January 25, 2021, which ensures that the federal government invests taxpayer dollars in American-owned businesses.</p>
+        </div>
+      </div>
+      <div class="usa-media-block tablet:grid-col">
+        <img class="usa-media-block__img"  src="/static/img/circle-124.png" alt="Alt text">
+        <div class="usa-media-block__body">
+          <h2 class="usa-graphic-list__heading">Buy American Act</h2>
+          <p>The Buy American Act of 1933 requires the United States government to prefer U.S.-made products in its purchases.Other pieces of federal legislation extend similar requirements to third-party purchases that utilize federal funds, such as highway and transit programs.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+  <section id="test-section-id" class="usa-section">
+    <div class="grid-container">
+      <h2 class="font-heading-xl margin-y-0">Waiver</h2>
+      <p class="usa-intro">To promote an accountable and transparent procurement policy, each agency should vest waiver issuance authority in senior agency leadership, where appropriate and consistent with applicable law.</p>
+      <a class="usa-button usa-button--big crt-button--large" href="/form/waiver">Apply for Waiver</a>
+    </div>
+  </section>
+
+</main>
+ <footer class="usa-footer usa-footer--slim">
+      <div class="usa-footer__secondary-section">
+        <div class="grid-container usa-footer__logo-section">
+          <div class="usa-footer__logo grid-row grid-gap-2">
+          <!--   <div class="grid-col-auto">
+              <img src="{% static "img/doj-logo-footer.png" %}"
+                   alt=""
+                   height="64" />
+            </div> -->
+            <div class="grid-col-auto">
+              <p class="usa-footer__logo-heading">
+                {% trans "General Services Administration" %}
+              </p>
+              <p class="usa-footer__logo-subheading">
+                {% trans "Helping the US Government buy American!" %}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {% block footer_extra %}
+      {% endblock footer_extra %}
+    </footer>
+    <script src="{% static 'js/url_params_polyfill.js' %}"></script>
+    <script src="{% static 'js/uswds.min.js' %}"></script>
+    <script src="{% static 'js/focus_alert.js' %}"></script>
+    <script src="{% static 'js/clear_error_class.js' %}"></script>
+    {% block page_js %}{% endblock %}
+
+    ]
+  </body>
+</html>
