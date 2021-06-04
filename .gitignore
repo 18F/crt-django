@@ -6,6 +6,7 @@ node_modules/
 *.pyc
 *.DS_Store
 *.env
+.python-version
 # this is where collect static puts the files
 staticfiles/
 pa11y-screenshots/
@@ -18,3 +19,5 @@ data/section_assignment.csv
 .coverage
 crt_portal/NO_ZIP.txt
 *.mo
+# this is where we store uploaded attachments when USE_LOCALSTACK=False
+attachments/

@@ -1,4 +1,5 @@
 # Maintenance or infrequent tasks
+[:arrow_left: Back to Documentation](../docs)
 
 ## Change protected class options
 
@@ -74,9 +75,9 @@ Those variables need to be set, as well as the secret key if you already have VC
 
     cf env crt-portal-django
 
-Update VCAPSERVICES it with the following command, replacing `<value` with the correct value in double quotes.
+Update VCAP_SERVICES it with the following command, replacing `<value` with the correct value in double quotes.
 
-    cf uups VCAP_SERVICES -p '{"SECRET_KEY":<value>,"AUTH_CLIENT_ID":<value>,"AUTH_SERVER": <value>,"AUTH_USERNAME_CLAIM":<value>,"AUTH_GROUP_CLAIM":<value>}'
+    cf uups VCAP_SERVICES -p '{"SECRET_KEY":<value>,"AUTH_CLIENT_ID":<value>,"AUTH_SERVER": <value>,"AUTH_USERNAME_CLAIM":<value>,"AUTH_GROUP_CLAIM":<value>, "NEW_RELIC_LICENSE_KEY":<value>}'
 
 You can check that it is in the environment correctly with:
 
@@ -109,7 +110,7 @@ See documentation for the ADFS Django package- https://django-auth-adfs.readthed
 
 ### Code changes
 
-Add the environment to add auth urls condion in urls.py and adding the environment to the auth conditions of settings.py.
+Add the environment to add auth urls condition in urls.py and adding the environment to the auth conditions of settings.py.
 
 crt_portal/crt_portal/settings.py
 
@@ -126,6 +127,14 @@ crt_portal/crt_portal/urls.py
     +if environment in ['PRODUCTION', 'STAGE']:
          auth = [
 
+    ...
+
+    ALLOWED_HOSTS = [
+        'civilrights.justice.gov',
+        'www.civilrights.justice.gov',
+        'crt-portal-django-prod.app.cloud.gov',
+        'crt-portal-django-stage.app.cloud.gov',
+    ]
 
 # Load testing
 
@@ -150,3 +159,217 @@ After the test is done, delete the user you made for testing.
 
     pipenv shell
 
+
+# Database upgrades
+
+For staging and prod we use medium-psql-redundant. These instructions are for updating dev to medium-psql-redundant or, could be adapted if you ever needed to move prod to a large-psql-redundant instance. Check the [cloud.gov docs])(https://cloud.gov/docs/services/relational-database/) for any updates or new recommendations.
+
+### Here are instructions of how to upgrade the dev db
+
+1) Install dependencies
+
+Install cf-service connect, it's a cloud.gov tool useful for moving data around
+    [https://github.com/cloud-gov/cf-service-connect](https://github.com/cloud-gov/cf-service-connect)
+    (Darwin is the Mac binary)
+If you don't already have it, install [pgcli](https://postgresapp.com/documentation/cli-tools.html) It is a command line tool for working with postgres
+
+4) Export data
+
+For dev and staging that file can be downloaded locally but for prod it may be better to put the file in the private s3 bucket or somewhere on the DOJ network.
+
+    #In your terminal, signed in to could.gov make sure you are in the correct space:
+    cf target -s dev
+
+    # In a separate shell window, connect to the service to setup a direct SSH tunnel and leave it running
+    # note the credentials and connection info given in the output
+    cf connect-to-service -no-client crt-portal-django crt-db
+
+    # Back in the original window, dump the database outside of the fec-cms directory
+    # using the credentials provided in the SSH tab
+    pg_dump -f crt_dev_<date>.dump postgres://<username>:<password>@<host>:<port>/<name>
+
+5) Create new database
+
+    cf create-service aws-rds medium-psql-redundant crt-db-new
+
+6) Load data into the new database
+
+    psql postgres://<username>:<password>@<host>:<port>/<name> < crt_dev_<date>.dump
+
+7) check crt-db-new and then rename databases
+This will allow us to try the new database and make sure we are happy with it before getting rid of the old database.
+
+check the new data base
+
+    #  Connect to the new db using pgcli
+    cf connect-to-service crt-portal-django crt-db-new
+    # Do some quick queries to make sure the information loaded correctly
+    # list tables
+    \dt
+    # list some report records
+    \ select * from cts_forms_report limit 50;
+    # list some user accounts
+    select * from auth_user limit 50;
+    # exit
+    \q
+
+rename databases
+
+    # rename old data base
+    cf rename-service crt-db crt-db-old
+    # rename new data base
+    cf rename-service crt-db-new crt-db
+
+8) Restage or redeploy
+Redeploying prevents downtime, so that is what you would want to do for production. You can go to Circle and redeploy the last successful build. The change to what database is being used won't go into effect untill the app is restaged or redeployed.
+
+For dev and staging, you can change the bindigs manually and restage. (It's a bit quicker)
+
+    # unbind old db and bind the new one
+    cf unbind-service crt-portal-django crt-db-old
+    cf bind-service crt-portal-django crt-db
+    # confirm the correct db is bound (look at the name, plan, and bound apps)
+    cf services
+    # restage
+    cf restage crt-portal-django
+
+9) Confirm app is working
+Go to the site, log out, log back in, make a distinctive sample record.
+```
+# Connect to the new db using pgcli
+cf connect-to-service crt-portal-django crt-db
+# Look for you sample. For this one I made the description 'TESTING_NEW_DB 5/24'
+select * from cts_forms_report where violation_summary='TESTING_NEW_DB 5/24'
+```
+10) Clean up
+Delete back up file from your local
+Delete crt-db-old from cloud.gov
+
+# Dependency management
+
+Dependencies are installed on each deploy of the application as part of the build process in CircleCI
+
+Our dependencies are defined within the repository, changes to should follow the same branching strategy and development process
+as any code changes.
+
+In local development with Docker, you will need to rebuild your containers after updating dependencies with:
+
+```shell
+docker-compose build
+```
+
+## Python
+
+We use [Pipenv] to manage development and production python dependencies.
+
+With pipenv installed locally, you can update development and production dependencies with the following:
+
+```shell
+pipenv update --dev
+```
+
+To update dependencies from within the `web` docker container, the approach is slightly different.
+
+```sh
+docker-compose run web pipenv update --dev
+```
+
+Either approach will result in an updated `Pipfile.lock` files located in your local copy of the codebase, ready for commit and submission of a pull request.
+
+[Pipenv]: https://docs.pipenv.org/
+
+
+# Periodic tasks
+
+We use Django management commands to execute periodic maintenance, refresh, or other code as necessary.
+
+The [CloudFoundry CLI's run-task](https://docs.cloudfoundry.org/devguide/using-tasks.html) command can be used to submit these for execution manually.
+
+Here's an example of executing the `refresh_trends` management command.
+
+```bash
+# Authenticate and target the desired space (dev, staging, or prod)
+# Then, submit a task to run the `refresh_trends` management command with:
+cf run-task crt-portal-django  -c "python crt_portal/manage.py refresh_trends" --name refresh-trends
+```
+
+Your local output of executing the above command will reflect success or failure of the task's submission.
+
+Output, if any, of the command being executed will be be available in the application logs.
+
+
+
+# Maintenance Mode
+
+We use an environment variable, `MAINTENANCE_MODE`, to run the application with altered functionality.
+
+To **enable** maintenance mode, we need to set the `MAINTENANCE_MODE` environment variable to `True` and restart all running instances.
+
+> **NOTE**: Cloud Foundry [CLI Version 7](https://docs.cloudfoundry.org/cf-cli/v7.html) is required to use `--strategy rolling`
+
+
+```shell
+cf target -s {target environment}
+cf set-env crt-portal-django MAINTENANCE_MODE True
+cf restart crt-portal-django --strategy rolling
+```
+
+To **disable** maintenance mode and return the application to normal operations, remove the `MAINTENANCE_MODE` variable from the desired environment and restart all running instances.
+
+```shell
+cf target -s {target environment}
+cf unset-env crt-portal-django MAINTENANCE_MODE
+cf restart crt-portal-django --strategy rolling
+```
+
+## A list of modified functionality when operating in maintenance mode
+
+URL | Method | Normal | Maintenance mode
+----|--------|--------|--------
+/report/| GET | Render report form | Render 503 maintenance page
+
+## Email configuration
+
+We use [GovDelivery's Targeted Messaging System (TMS)](https://developer.govdelivery.com/api/tms/) to send outbound email from the application.
+
+### Local development
+
+In local environments, all outbound email is routed to [MailHog](https://github.com/mailhog/MailHog).
+
+Outbound messages sent to MailHog are viewable via the MailHog UI, accessible at http://localhost:8025
+
+[Jim, MailHog's Chaos Monkey,](https://github.com/mailhog/MailHog/blob/master/docs/JIM.md) can be enabled and configured by modifying the `docker-compose.yml` file. This is helpful for testing intermittent connections, rejections, or other failures which may be encountered when attempting to send mail.
+
+For example, this command will enable Jim with a 50% chance to reject an incoming connection.
+
+    mailhog:
+        image: mailhog/mailhog
+        ports:
+          - 1025:1025 # smtp server
+          - 8025:8025 # web ui
+        command: -invite-jim=1 -jim-accept=0.50
+
+### Development, Staging, and Production
+
+To enable outbound emails, a deployed instance **must** have the following environment variables defined in cloud.gov either via the command line or cloud.gov dashboard.
+
+
+Variable | Description
+---------|-----------
+`TMS_AUTH_TOKEN` | TMS API authentication token
+`RESTRICT_EMAIL_RECIPIENTS_TO` | `;` delimited string of email addresses which, when non-empty, will prevent outbound email from being sent to any address other than those specified here. We use this to prevent sending unexpected emails from development instances.
+`TMS_WEBHOOK_ALLOWED_CIDR_NETS` | `;` delimited string of IP addresses from which we're expecting webhook requests. Requests from all other origins will be rejected. May be set to `*` in development to allow requests from all origins.
+
+
+Command line example
+
+   ```
+   # Authenticate and target desired space
+   cf set-env crt-portal-django TMS_AUTH_TOKEN not_a_real_token
+   cf set-env crt-portal-django TMS_WEBHOOK_ALLOWED_CIDR_NETS 192.168.0.15/24
+   cf set-env crt-portal-django RESTRICT_EMAIL_RECIPIENTS_TO developer.email@example.com;dev@example.com
+   # re-stage application
+   ```
+
+> **WARNING**:
+ If `TMS_AUTH_TOKEN` and `TMS_WEBHOOK_ALLOWED_CIDR_NETS` values are not configured the application will start but `EMAIL_ENABLED` will be set to `False` and the user interface will not provide an option to generate and send emails.

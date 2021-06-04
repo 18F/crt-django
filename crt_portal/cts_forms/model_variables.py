@@ -3,7 +3,7 @@
 from django.utils.translation import gettext_lazy as _
 
 # Translators: This is used as a an empty selection default for drop down menus
-EMPTY_CHOICE = ('', _('- Select -'))
+EMPTY_CHOICE = _('- Select -')
 
 SERVICEMEMBER_CHOICES = (
     ('yes', _('Yes')),
@@ -13,19 +13,41 @@ SERVICEMEMBER_CHOICES = (
 SERVICEMEMBER_ERROR = _('Please select a status as an active duty service member.')
 
 PRIMARY_COMPLAINT_CHOICES = (
+
     ('workplace', _('Workplace discrimination or other employment-related problem')),
     ('housing', _('Housing discrimination or harassment')),
     ('education', _('Discrimination at a school, educational program or service, or related to receiving education')),
+    ('police', _('Mistreated by police, correctional staff, or inmates')),
     ('voting', _('Voting rights or ability to vote affected')),
-    ('police', _('Mistreated by police, or correctional staff (including while in prison)')),
     ('commercial_or_public', _('Discriminated against in a commercial location or public place')),
     ('something_else', _('Something else happened')),
 )
 PRIMARY_COMPLAINT_DICT = dict(PRIMARY_COMPLAINT_CHOICES)
 
+PRIMARY_COMPLAINT_PROFORM_CHOICES = (
+    ('workplace', 'Workplace Discrimination'),
+    ('housing', 'Housing Discrimination'),
+    ('education', 'Education Discrimination'),
+    ('voting', 'Voting Discrimination'),
+    ('police', 'Police / Correctional Misconduct'),
+    ('commercial_or_public', 'Commercial / Public Discrimination'),
+    ('something_else', 'Something else'),
+)
+
+LANDING_COMPLAINT_CHOICES = (
+    ('hate_crime', _('Victim of a hate crime')),
+    ('human_trafficking', _('Victim of human trafficking')),
+)
+LANDING_COMPLAINT_DICT = dict(LANDING_COMPLAINT_CHOICES)
+
 PRIMARY_COMPLAINT_CHOICES_TO_HELPTEXT = {
     'commercial_or_public': _('This could include a store, restaurant, bar, hotel, place of worship, library, medical facility, bank, courthouse, government building, public park or street, as well as online.'),
-    'something_else': _('The examples above reflect some but not all of the civil rights violations that we address. Select this option if you don’t see an example that applies to your situation. You will be able to tell us more later.')
+    'something_else': _('The examples above reflect some but not all of the civil rights violations that we address. Select this option if you don’t see an example that applies to your situation. You will be able to tell us more later.'),
+    'police': _('(Including while in prison)')
+}
+LANDING_COMPLAINT_CHOICES_TO_HELPTEXT = {
+    'hate_crime': _('To potentially be a hate crime, the situation must include physical harm, or attempts to cause harm with a dangerous weapon, because of race, color, national origin, religion, gender, sexual orientation, gender identity, or disability.  Threats of force or physical harm because of race, color, religion or national origin are also potential hate crimes.'),
+    'human_trafficking': _('Human trafficking is when someone is forced into labor or sex work for profit. This can happen in many types of work that include, for example: agriculture, domestic work, restaurants, cleaning services, and sex work.')
 }
 
 PRIMARY_COMPLAINT_CHOICES_TO_EXAMPLES = {
@@ -33,11 +55,14 @@ PRIMARY_COMPLAINT_CHOICES_TO_EXAMPLES = {
         _('Fired, not hired, or demoted for reasons unrelated to job performance or qualifications'),
         _('Retaliated against for reporting discrimination'),
         _('Inappropriately asked to provide immigration documentation'),
+        _('Denied reemployment or fired based on military service'),
+        _('Denied an accommodation for a disability, including not being allowed to have a service animal <strong>in the workplace</strong>'),
     ],
     'housing': [
         _('Denied housing, a permit, or a loan based on personal characteristics like race, sex, and/or having children under 18 years old'),
-        _('Denied an accommodation for a disability, including not being allowed to have a service animal'),
         _('Harassment by a landlord or another tenant, including sexual harassment'),
+        _('Challenges with terminating a lease due to military status change'),
+        _('Denied an accommodation for a disability, including not being allowed to have a service or assistance animal <strong>in public housing</strong>'),
     ],
     'education': [
         _('Harassment based on race, sex, national origin, disability, or religion'),
@@ -58,9 +83,19 @@ PRIMARY_COMPLAINT_CHOICES_TO_EXAMPLES = {
     'commercial_or_public': [
         _('A physical or online location that does not provide disability accommodations'),
         _('Denied service or entry because of a perceived personal characteristic like race, sex, or religion'),
-        _('Threatened or harassed while seeking or receiving reproductive health services'),
+        _('Denied an accommodation for a disability, including not being allowed to have a service animal <strong>in a commercial or public location</strong>'),
     ],
     'something_else': []
+}
+LANDING_COMPLAINT_CHOICES_TO_EXAMPLES = {
+    'hate_crime': [
+        _('Physical attack causing injury, or an attempt to cause injury with a dangerous weapon, because of the above characteristics'),
+        _('Attacks, threats of violence, or destruction of property at place of worship (ie: shooting, arson, bombing, smashing windows, writing slurs)'),
+    ],
+    'human_trafficking': [
+        _('Coerced into working through threats of harm or deportation, psychological manipulation, debt manipulation, document confiscation, or confinement'),
+        _('Forced into sex work for profit through physical abuse or assault, sexual abuse or assault, other threats of harm, or confinement'),
+    ]
 }
 
 ELECTION_CHOICES = (
@@ -72,19 +107,25 @@ ELECTION_CHOICES = (
 )
 ELECTION_DICT = dict(ELECTION_CHOICES)
 
+# preserving archival data
 HATE_CRIMES_TRAFFICKING_MODEL_CHOICES = (
     ('physical_harm', _('Physical harm or threats of violence based on race, color, national origin, religion, gender, sexual orientation, gender identity, or disability')),
     ('trafficking', _('Threatened, forced, and held against your will for the purposes of performing work or commercial sex acts. This could include threats of physical harm, withholding promised wages, or being held under a false work contract')),
 )
-
 HATE_CRIMES_TRAFFICKING_CHOICES = [choice[1] for choice in HATE_CRIMES_TRAFFICKING_MODEL_CHOICES]
+
+# This it the one in use
+HATE_CRIME_CHOICES = (
+    ('yes', _('Yes')),
+    ('no', _('No')),
+)
 
 # See protected maintenance docs: https://github.com/usdoj-crt/crt-portal/blob/develop/docs/maintenance_or_infrequent_tasks.md#change-protected-class-options
 # This tuple will create the form_order, then lists a short code that we use for the model value and CRT display views, then the name as it will display on the form.
 PROTECTED_CLASS_FIELDS = [
     # (form order, code, display name)
     (0, 'Age', _('Age')),
-    (1, 'Disability', _('Disability (including temporary or recovery)')),
+    (1, 'Disability', _('Disability (including temporary or recovered and including HIV and drug addiction)')),
     (2, 'Family status', _('Family, marital, or parental status')),
     (3, 'Gender', _('Gender identity (including gender stereotypes)')),
     (4, 'Genetic', _('Genetic information (including family medical history)')),
@@ -108,25 +149,110 @@ PROTECTED_MODEL_CHOICES = tuple(
 
 PROTECTED_CLASS_ERROR = _('Please make a selection to continue. If none of these apply to your situation, please select “None of these apply to me” or "Other reason"and explain.')
 
+# CRT views only
+CLOSED_STATUS = 'closed'
 STATUS_CHOICES = (
-    ('new', _('New')),
-    ('open', _('Open')),
-    ('closed', _('Closed')),
+    ('new', 'New'),
+    ('open', 'Open'),
+    (CLOSED_STATUS, 'Closed'),
 )
 
+# CRT views only
 SECTION_CHOICES = (
-    ('ADM', _('Administrative')),
-    ('APP', _('Appellate')),
-    ('CRM', _('Criminal')),
-    ('DRS', _('Disability')),
-    ('ELS', _('Employment Litigation Services')),
-    ('EOS', _('Education')),
-    ('FCS', _('Federal Coordination and Compliance')),
-    ('HCE', _('Housing')),
-    ('IER', _('Immigrant and Employee Rights')),
-    ('SPL', _('Special Litigation')),
-    ('VOT', _('Voting')),
+    ('ADM', 'Administrative'),
+    ('APP', 'Appellate'),
+    ('CRM', 'Criminal'),
+    ('DRS', 'Disability Rights'),
+    ('ELS', 'Employment Litigation'),
+    ('EOS', 'Educational Opportunities'),
+    ('FCS', 'Federal Coordination and Compliance'),
+    ('HCE', 'Housing and Civil Enforcement'),
+    ('IER', 'Immigrant and Employee Rights'),
+    ('SPL', 'Special Litigation'),
+    ('VOT', 'Voting'),
 )
+# for form letter translations only. Note that these choices
+# technically differ from section choices since they have "de" (of).
+SECTION_CHOICES_ES = (
+    ('ADM', 'Administrativa'),
+    ('APP', 'de Apelación'),
+    ('CRM', 'Penal'),
+    ('DRS', 'de Derechos en Razón a Discapacidad'),
+    ('ELS', 'de Litigios Laborales'),
+    ('EOS', 'de Oportunidades Educativas'),
+    ('FCS', 'de Coordinación y Cumplimiento Federal'),
+    ('HCE', 'de Coordinación y Cumplimiento Federal'),
+    ('IER', 'de Derechos de Inmigrantes y Empleados'),
+    ('SPL', 'de Litigios Especiales'),
+    ('VOT', 'de Votación'),
+)
+SECTION_CHOICES_KO = (
+    ('ADM', '행정'),
+    ('CRM', '형사'),
+    ('DRS', '장애인 권리'),
+    ('ELS', '고용 소송'),
+    ('EOS', '교육 기회'),
+    ('FCS', '연방 조정 및 규정준수'),
+    ('HCE', '주택 및 민법 시행'),
+    ('IER', '이민 및 직원 권리'),
+    ('SPL', '특별 소송'),
+    ('VOT', '투표'),
+)
+
+SECTION_CHOICES_TL = (
+    ('ADM', 'Pang-Administratibo'),
+    ('CRM', 'Kriminal'),
+    ('DRS', 'Mga Karapatan ng May Kapansanan'),
+    ('ELS', 'Paglilitis sa Trabaho'),
+    ('EOS', 'Mga Oportunidad sa Edukasyon'),
+    ('FCS', 'Pederal na Koordinasyon at Pagsunod'),
+    ('HCE', 'Pabahay at Pagpapatupad ng Sibil'),
+    ('IER', 'Imigrasyon at Mga Karapatan ng Empleyado'),
+    ('SPL', 'Espesyal na Paglilitis'),
+    ('VOT', 'Pagboto'),
+)
+
+SECTION_CHOICES_VI = (
+    ('ADM', 'Ban Hành Chánh'),
+    ('CRM', 'Ban Hình Sự'),
+    ('DRS', 'Ban Quyền của Người Khuyết Tật'),
+    ('ELS', 'Ban Tranh Tụng về Bất những vấn đề/bất công trong Việc Làm'),
+    ('EOS', 'Ban Cơ Hội Được Giáo Dục tốt'),
+    ('FCS', 'Ban Tuân Thủ và Điều Phối Liên Bang'),
+    ('HCE', 'Ban Gia Cư và Thực Thi Dân Sự'),
+    ('IER', 'Ban  Di Trú và Quyền của Người Lao Động'),
+    ('SPL', 'Ban Tố Tụng Đặc Biệt'),
+    ('VOT', 'Ban Bầu Cử'),
+)
+
+SECTION_CHOICES_ZH_HANT = (
+    ('ADM', '行政管理'),
+    ('CRM', '刑事'),
+    ('DRS', '残疾權利'),
+    ('ELS', '就業訴訟'),
+    ('EOS', '教育机會'),
+    ('FCS', '聮邦恊调與遵守'),
+    ('HCE', '住房和民事执法'),
+    ('IER', '移民與雇員權利'),
+    ('SPL', '特别訴訟'),
+    ('VOT', '投票'),
+)
+
+SECTION_CHOICES_ZH_HANS = (
+    ('ADM', '行政管理'),
+    ('CRM', '刑事'),
+    ('DRS', '残疾权利'),
+    ('ELS', '就业诉讼'),
+    ('EOS', '教育机会'),
+    ('FCS', '联邦协调与遵守'),
+    ('HCE', '住房和民事执法'),
+    ('IER', '移民与雇员权利'),
+    ('SPL', '特别诉讼'),
+    ('VOT', '投票'),
+)
+
+# CRT view global section filter
+SECTION_CHOICES_WITHOUT_LABELS = tuple([(key[0], key[0]) for key in SECTION_CHOICES])
 
 COMMERCIAL_OR_PUBLIC_PLACE_CHOICES = (
     ('place_of_worship', _('Place of worship or about a place of worship')),
@@ -194,12 +320,13 @@ EMPLOYER_SIZE_CHOICES = (
 EMPLOYER_SIZE_DICT = dict(EMPLOYER_SIZE_CHOICES)
 EMPLOYER_SIZE_ERROR = _('Please select how large the employer is.')
 
+# CRT views only
 EMPLOYER_FRIENDLY_TEXT = {
-    'public_employer': _('Public'),
-    'private_employer': _('Private'),
-    'not_sure': _('Not sure'),
-    '14_or_less': _('Less than 15'),
-    '15_or_more': _('15 or more'),
+    'public_employer': 'Public',
+    'private_employer': 'Private',
+    'not_sure': 'Not sure',
+    '14_or_less': 'Less than 15',
+    '15_or_more': '15 or more',
 }
 
 PUBLIC_OR_PRIVATE_SCHOOL_CHOICES = (
@@ -290,11 +417,11 @@ POLICE_LOCATION_ERRORS = {
 
 # for internal use only
 INTAKE_FORMAT_CHOICES = (
-    ('web', 'web'),
-    ('letter', 'letter'),
-    ('phone', 'phone'),
-    ('fax', 'fax'),
-    ('email', 'email'),
+    ('web', 'Web'),
+    ('letter', 'Letter'),
+    ('phone', 'Phone'),
+    ('fax', 'Fax'),
+    ('email', 'Email'),
 )
 
 INCIDENT_DATE_HELPTEXT = _('You must enter a month and year. Please use the format MM/DD/YYYY.')
@@ -327,11 +454,11 @@ DISTRICT_CHOICES = (
     ('53', '53'), ('54', '54'), ('54M', '54M'), ('55', '55'), ('55 ', '55 '),
     ('56', '56'), ('57', '57'), ('58', '58'), ('59', '59'), ('59N', '59N'),
     ('60', '60'), ('61', '61'), ('62', '62'), ('63', '63'), ('64', '64'),
-    ('66', '66'), ('67', '67'), ('69', '69'), ('70', '70'), ('71', '71'),
-    ('72', '72'), ('73', '73'), ('74', '74'), ('75', '75'), ('76', '76'),
-    ('77', '77'), ('78', '78'), ('79', '79'), ('80', '80'), ('81', '81'),
-    ('82', '82'), ('83', '83'), ('84', '84'), ('85', '85'), ('86', '86'),
-    ('87', '87'),
+    ('65', '65'), ('66', '66'), ('67', '67'), ('69', '69'), ('70', '70'),
+    ('71', '71'), ('72', '72'), ('73', '73'), ('74', '74'), ('75', '75'),
+    ('76', '76'), ('77', '77'), ('78', '78'), ('79', '79'), ('80', '80'),
+    ('81', '81'), ('82', '82'), ('83', '83'), ('84', '84'), ('85', '85'),
+    ('86', '86'), ('87', '87'), ('90', '90')
 )
 
 # for internal use only
@@ -348,3 +475,13 @@ STATUTE_CHOICES = (
 )
 
 PUBLIC_USER = 'public user'
+
+CONTACT_PHONE_INVALID_MESSAGE = _('If you submit a phone number, please make sure to include between 7 and 15 digits. The characters "+", ")", "(", "-", and "." are allowed. Please include country code if entering an international phone number.')
+
+PRINT_CHOICES = (
+    ('correspondent', 'Correspondent Information'),
+    ('issue', 'Reported Issue'),
+    ('description', 'Personal Description'),
+    ('activity', 'Activity'),
+    ('summary', 'Summary'),
+)

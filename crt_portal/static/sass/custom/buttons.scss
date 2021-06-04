@@ -1,16 +1,33 @@
 button,
 .usa-button {
-  background-color: $blue-warm-vivid-80;
+  background-color: color($theme-color-primary-darker);
+}
+
+.button--warning {
+  background-color: color($theme-color-secondary);
+  &:before {
+    margin-right: 10px;
+    background-image: url(../../img/alerts/warning.svg);
+    background-size: cover;
+    background-repeat: no-repeat;
+    content: '';
+    width: 30px;
+    height: 20px;
+    display: inline-block;
+  }
+  &:hover {
+    background-color: color($theme-color-secondary-dark) !important;
+  }
 }
 
 .button--edit {
   background-color: transparent;
-  @include u-font-size('body', 'sm');
+  @include text--body-copy__medium();
   float: right;
   &:before {
     margin-right: 10px;
     background-image: url(../../img/ic_edit.svg);
-    background-repeat: none;
+    background-repeat: no-repeat;
     content: '';
     height: 12px;
     width: 12px;
@@ -27,5 +44,25 @@ button,
   &:focus {
     @include u-color('secondary');
     background-color: transparent !important;
+  }
+}
+
+.button--continue, button#login {
+  color: color('white') !important;
+}
+
+// glue the review page edit buttons to the bottom of the card on mobile
+@include at-media-max('mobile-lg') {
+  .crt-portal-card__content {
+    position: relative; // won't change display of card but will allow absolute positioning of button
+    padding-bottom: units($spacer-6x); // to accommodate button
+  }
+  .button--review {
+    position: absolute;
+    width: 84%;
+    bottom: units($spacer-3x);
+    button{
+      margin: 0;
+    }
   }
 }

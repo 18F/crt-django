@@ -9,7 +9,7 @@
         'div-id_0-employer_size_0'
       ],
       'id_0-primary_complaint_2': ['div-id_0-public_or_private_school_0'],
-      'id_0-primary_complaint_4': [
+      'id_0-primary_complaint_3': [
         'div-id_0-inside_correctional_facility_0',
         'div-id_0-correctional_facility_type_0'
       ],

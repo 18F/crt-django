@@ -1,18 +1,65 @@
 // USA Gov Banner Customization
 
 .usa-banner {
-  background-color: #2E2E2A;
+  background-color: color($theme-color-base-ink);
+
+  .usa-banner__header {
+    padding-top: .75rem;
+    padding-bottom: .75rem;
+  }
 
   .usa-banner__header-text,
   .usa-media-block__body {
-    color: white;
+    color: color('white');
+
+    // Touchpoints footer styling
+    [id='fba-modal-dialog'] & {
+      color: color($theme-color-base-darkest);
+    }
   }
 
-  .usa-banner__button, .usa-banner__header-action {
-    color: $gold;
+  .usa-banner__button,
+  .usa-banner__header-action {
+    color: color($theme-color-warning);
 
     &:hover {
-      color: $yellow;
+      color: color($theme-color-warning-light);
+    }
+  }
+
+  .language-selection {
+
+    @media (max-width: 63.99em) {
+      display: none;
+    }
+
+    @media (min-width: 64em) {
+      text-align: right;
+
+      .language-selection__inner {
+        display: inline-flex;
+      }
+
+      .usa-banner__button {
+        margin-left: 1.5rem;
+
+        .usa-banner__button-text {
+          text-decoration: none;
+        }
+      }
+
+      img {
+        height: 1rem;
+        margin-top: .25rem;
+      }
+
+      .language-selection__button-active {
+        text-decoration: underline;
+      }
+
+      .usa-banner__button::after {
+        display: none;
+      }
     }
   }
 }

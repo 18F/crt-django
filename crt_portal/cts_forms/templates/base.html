@@ -5,25 +5,109 @@
 <!DOCTYPE html>
 <html lang="{{LANGUAGE_CODE}}">
  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    {# Asking search engines not to index our site while we're in development mode. #}
-    <meta name="robots" content="noindex">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    {% block page_title %}
-      <title>{% trans "Civil Rights Division - Department of Justice" %}</title>
+    {% block ga_tagmanager_head %}
+      {% environment as env %}
+      {% if env == "PRODUCTION" or env == "STAGE" %}
+       <!-- Google Tag Manager -->
+       <script nonce="{{ request.csp_nonce }}">(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+       new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+       j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+       'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+       })(window,document,'script','dataLayer','GTM-N6M8JRD');</script>
+       <!-- End Google Tag Manager -->
+      {% endif %}
     {% endblock %}
 
-    <link rel="icon" href="{% static "img/us_flag_small.png" %}">
+
+    {% block meta %}
+      <meta charset="utf-8">
+      <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+      <link rel="canonical" href="https://civilrights.justice.gov{{ request.path }}">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+
+      <meta property="og:url" content="https://civilrights.justice.gov{{ request.path }}" />
+      <meta property="og:type" content="website" />
+      {% comment "Why we're conditionally loading a font " %}
+       This is intended as a temporary fix to resolve inconsistent diacritic rendering
+       for vietnamese glyphs when using the serif font family.
+      {% endcomment %}
+
+      {% if LANGUAGE_CODE == 'vi' %}
+        <link rel="preconnect" href="https://fonts.gstatic.com">
+        <link href="https://fonts.googleapis.com/css2?family=Tinos:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+      {% endif %}
+
+      {% block meta_title %}
+        {% trans 'Contact the Civil Rights Division | Department of Justice' as meta_title %}
+        <meta property="og:title" content="{{meta_title}}" />
+        <meta property="name" content="{{meta_title}}" />
+      {% endblock meta_title %}
+
+      {% block meta_analytics %}
+        {% environment as env %}
+        {% if env == "PRODUCTION" %}
+          <meta name="google-site-verification" content="WVT4_Ja5oSh3rhswyl3OQsLbdxZgOVCgxG7hMoWzL0w" />
+        {% endif %}
+      {% endblock %}
+
+      {% block meta_description %}
+        {% trans 'Have you or someone you know experienced unlawful discrimination? The Civil Rights Division may be able to help. Civil rights laws can protect you from unlawful discrimination, harassment, or abuse in a variety of settings like housing, the workplace, school, voting, businesses, healthcare, public spaces, and more.' as meta_description %}
+        <meta property="og:description" content="{{meta_description}}" />
+        <meta name="description" content="{{meta_description}}" />
+      {% endblock meta_description %}
+
+      <meta property="og:image" content="{% static 'img/facebook-og.png' %}" />
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:image" content="{% static 'img/twitter-card.png' %}" />
+
+    {% endblock meta %}
+
+    {% block page_title %}
+      <title>{% trans "Contact the Civil Rights Division | Department of Justice" %}</title>
+    {% endblock %}
+
+    <link rel="icon" href="{% static "img/favicon.png" %}">
     <link rel="stylesheet" href="{% static "css/compiled/styles.css" %}">
+
     {% block head %}{% endblock %}
   </head>
   <body {% block body_class %}{% endblock %}>
     <a class="usa-skipnav" href="#main-content">{% trans "Skip to main content" %}</a>
+
+    {% block ga_tagmanager_body %}
+      {% environment as env %}
+      {% if env == "PRODUCTION" or env == "STAGE" %}
+        <!-- Google Tag Manager (noscript) -->
+        <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-N6M8JRD"
+        height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+        <!-- End Google Tag Manager (noscript) -->
+      {% endif %}
+    {% endblock %}
+
     {% block usa_banner %}
       {% include "partials/banner/usa_banner.html" %}
     {% endblock %}
+
+    {% environment as env %}
+    {% if env != "PRODUCTION" %}
+      <div class="crt-header--warning-pii">
+        <div class="grid-container">
+          <div class="grid-row grid-gap">
+            <div class="grid-col-12">
+              <div class="usa-alert usa-alert--warning">
+                <div class="usa-alert__body">
+                  <h1 class="usa-alert__heading">Test site</h1>
+                  <p class="usa-alert__text">
+                    This is a test site. Do not enter PII.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
 
     {% block page_header %}{% endblock %}
 
@@ -37,7 +121,7 @@
         <div class="grid-container usa-footer__logo-section">
           <div class="usa-footer__logo grid-row grid-gap-2">
             <div class="grid-col-auto">
-              <img src="{% static "img/doj-logo-footer.svg" %}"
+              <img src="{% static "img/doj-logo-footer.png" %}"
                    alt=""
                    height="64" />
             </div>
@@ -54,22 +138,28 @@
       {% include "partials/footer.html" %}
       </div>
 
-      {% comment %}temporary policy page{% endcomment %}
-      <div style="background-color: #162e51; color: white; padding-top: 2em; border-top: 1px solid #454545">
-        {% include "partials/policy.html" %}
-      </div>
+      {% block footer_extra %}
+      {% endblock footer_extra %}
     </footer>
     {% endblock %}
     <script src="{% static 'js/url_params_polyfill.js' %}"></script>
     <script src="{% static 'js/uswds.min.js' %}"></script>
     <script src="{% static 'js/focus_alert.js' %}"></script>
     <script src="{% static 'js/clear_error_class.js' %}"></script>
+    <script src="{% static 'js/banner_language_selection.js' %}"></script>
     {% block page_js %}{% endblock %}
 
     {% block analytics %}
     {% environment as env %}
-    {% if env == "PRODUCTION" %}
+    {% if env == "PRODUCTION" or env == "STAGE" %}
       <script async="async" id="_fed_an_ua_tag" src="https://dap.digitalgov.gov/Universal-Federated-Analytics-Min.js?agency=DOJ&amp;sp=find&amp;subagency=crt"></script>
+      <script async src="https://www.googletagmanager.com/gtag/js?id=UA-176942176-1"></script>
+      <script nonce="{{ request.csp_nonce }}">
+       window.dataLayer = window.dataLayer || [];
+       function gtag(){dataLayer.push(arguments);}
+       gtag('js', new Date());
+       gtag('config', 'UA-176942176-1');
+      </script>
     {% endif %}
     {% endblock %}
   </body>

@@ -1,16 +1,19 @@
 {% extends "forms/complaint_view/intake_base.html" %}
 {% load static %}
 
-{% block head %}
-  <link rel="stylesheet" href="{% static "css/accessible-autocomplete.min.css" %}" />
-{% endblock head %}
+{% block page_header %}
+{% include 'forms/complaint_view/intake_filters_header.html' with title_text="CRT Complaint Records" profile_form=profile_form  %}
+{% endblock %}
 
 {% block content %}
 <div class="intake-content">
+  <div id="status-update" class="grid-col-auto">
+    {% include 'partials/messages.html' %}
+  </div>
   {% include "forms/complaint_view/index/filter-controls.html" with filters=filters form=form %}
   <div class="display-flex margin-top-8">
     {% include "forms/complaint_view/index/active-filters.html" %}
-    <span class="margin-left-auto">
+    <span class="intake-pagination margin-left-auto">
       <p>Showing {{ page_format.page_range_start }} - {{ page_format.page_range_end }} of {{ page_format.count }} records</p>
     </span>
   </div>
@@ -32,17 +35,15 @@
 {% endblock %}
 {% block page_js %}
 {{ block.super }}
-<script type="text/javascript" src="{% static 'js/accessible-autocomplete.min.js' %}"></script>
-<script nonce="{{request.csp_nonce}}">
-  (function(root) {
-    root.CRT = root.CRT || {}
-    root.CRT.pageArgs = "{{ page_args }}"
-  })(window);
-  accessibleAutocomplete.enhanceSelectElement({
-    defaultValue: '',
-    selectElement: document.querySelector('#id_assigned_to')
-  });
-</script>
-
+<script src="{% static 'js/complaint_quick_view.js' %}"></script>
 <script src="{% static 'js/complaint_view_filters.js' %}"></script>
+<script src="{% static 'js/complaint_actions.js' %}"></script>
+<script type="text/javascript" src="{% static 'js/aria-autocomplete-1.2.3.min.js' %}"></script>
+<script nonce="{{request.csp_nonce}}">
+ var select = document.getElementById('id_assigned_to');
+ AriaAutocomplete(select, {
+   minLength: 0,
+   maxResults: 5
+ });
+</script>
 {% endblock %}

@@ -9,16 +9,16 @@ from django.test.client import Client
 from django.urls import reverse
 from testfixtures import LogCapture
 
-from ..forms import (CommercialPublicLocation, Contact, Details,
-                     EducationLocation, LocationForm, PoliceLocation,
-                     PrimaryReason, ProForm, ProtectedClassForm, When, ComplaintActions)
-from ..model_variables import (HATE_CRIMES_TRAFFICKING_MODEL_CHOICES,
+from ..forms import (CommercialPublicLocation, ComplaintActions, Contact,
+                     Details, EducationLocation, HateCrimes, LocationForm,
+                     PoliceLocation, PrimaryReason, ProfileForm, ProForm,
+                     ProtectedClassForm, When)
+from ..model_variables import (CONTACT_PHONE_INVALID_MESSAGE,
                                PRIMARY_COMPLAINT_CHOICES,
                                PRIMARY_COMPLAINT_ERROR, PROTECTED_CLASS_ERROR,
                                PROTECTED_MODEL_CHOICES, SERVICEMEMBER_ERROR,
                                VIOLATION_SUMMARY_ERROR, WHERE_ERRORS)
-from ..models import (CommentAndSummary, HateCrimesandTrafficking,
-                      ProtectedClass, Report)
+from ..models import CommentAndSummary, Profile, ProtectedClass, Report
 from ..views import save_form
 from .test_data import SAMPLE_REPORT
 
@@ -82,8 +82,13 @@ class Valid_Form_Tests(TestCase):
 
     def test_Primary_reason_valid(self):
         form = PrimaryReason(data={
-            'hatecrimes_trafficking': HateCrimesandTrafficking.objects.all(),
             'primary_complaint': PRIMARY_COMPLAINT_CHOICES[0][0],
+        })
+        self.assertTrue(form.is_valid())
+
+    def test_hate_crimes_valad(self):
+        form = HateCrimes(data={
+            'hate_crime': 'yes',
         })
         self.assertTrue(form.is_valid())
 
@@ -92,6 +97,12 @@ class Valid_Form_Tests(TestCase):
             'last_incident_year': 2019,
             'last_incident_month': 5,
             'last_incident_day': 5,
+        })
+        self.assertTrue(form.is_valid())
+
+    def test_profile_update_valid(self):
+        form = ProfileForm(data={
+            'intake_filters': ['VOT', 'ADM']
         })
         self.assertTrue(form.is_valid())
 
@@ -173,19 +184,16 @@ class Complaint_Show_View_404(TestCase):
 
 class Complaint_Show_View_Valid(TestCase):
     def setUp(self):
-        SAMPLE_REPORT['primary_complaint'] = 'voting'
-        SAMPLE_REPORT['election_details'] = 'federal'
+        data = copy.deepcopy(SAMPLE_REPORT)
+        data['primary_complaint'] = 'voting'
+        data['election_details'] = 'federal'
+        data['hate_crime'] = 'yes'
 
-        test_report = Report.objects.create(**SAMPLE_REPORT)
+        test_report = Report.objects.create(**data)
 
         for choice in PROTECTED_MODEL_CHOICES:
             pc = ProtectedClass.objects.get_or_create(value=choice[0])[0]
             test_report.protected_class.add(pc)
-            test_report.save()
-
-        for choice in HATE_CRIMES_TRAFFICKING_MODEL_CHOICES:
-            hct = HateCrimesandTrafficking.objects.get_or_create(value=choice[0])[0]
-            test_report.hatecrimes_trafficking.add(hct)
             test_report.save()
 
         self.client = Client()
@@ -210,8 +218,7 @@ class Complaint_Show_View_Valid(TestCase):
         pc = PRIMARY_COMPLAINT_CHOICES[3][1]
         self.assertTrue(str(pc) in self.content)
         self.assertTrue('Election type (federal/local): federal' in self.content)
-        self.assertTrue(self.context['crimes']['physical_harm'])
-        self.assertTrue(self.context['crimes']['trafficking'])
+        self.assertTrue(self.test_report.hate_crime in self.content)
         self.assertTrue(self.test_report.location_name in self.content)
         self.assertTrue(self.test_report.location_city_town in self.content)
         self.assertTrue(self.test_report.location_state in self.content)
@@ -222,27 +229,6 @@ class Complaint_Show_View_Valid(TestCase):
 
 class SectionAssignmentTests(TestCase):
     def test_CRM_routing(self):
-        # All human trafficking goes to CRM.
-        data = copy.deepcopy(SAMPLE_REPORT)
-        data['primary_complaint'] = 'voting'
-        test_report = Report.objects.create(**data)
-        human_trafficking = HateCrimesandTrafficking.objects.get_or_create(value=HATE_CRIMES_TRAFFICKING_MODEL_CHOICES[0][0])
-        test_report.hatecrimes_trafficking.add(human_trafficking[0])
-        test_report.save()
-        self.assertTrue(test_report.assign_section() == 'CRM')
-
-        # All hate crime goes to CRM.
-        data = copy.deepcopy(SAMPLE_REPORT)
-        data['primary_complaint'] = 'voting'
-        test_report = Report.objects.create(**data)
-        test_report = Report.objects.create(**SAMPLE_REPORT)
-        disability = ProtectedClass.objects.get_or_create(value='disability')
-        test_report.protected_class.add(disability[0])
-        human_trafficking = HateCrimesandTrafficking.objects.get_or_create(value='physical_harm')
-        test_report.hatecrimes_trafficking.add(human_trafficking[0])
-        test_report.save()
-        self.assertTrue(test_report.assign_section() == 'CRM')
-
         data = copy.deepcopy(SAMPLE_REPORT)
         data['primary_complaint'] = 'police'
         data['inside_correctional_facility'] = 'outside'
@@ -498,6 +484,8 @@ class CRT_FILTER_Tests(TestCase):
         test_report.location_city_town = 'Cleveland'
         test_report.location_state = 'OH'
         test_report.assigned_section = test_report.assign_section()
+        test_report.servicemember = 'yes'
+        test_report.hate_crime = 'yes'
         test_report.save()
 
         self.client = Client()
@@ -539,16 +527,16 @@ class CRT_FILTER_Tests(TestCase):
         yesterday = date.today() - timedelta(days=1)
         tomorrow = date.today() + timedelta(days=1)
 
-        url_start_yesterday = f"{self.url_base}?create_date_start={yesterday.strftime('%Y%m%d')}"
+        url_start_yesterday = f"{self.url_base}?create_date_start={yesterday.strftime('%Y-%m-%d')}"
         start_yesterday_response = self.client.get(url_start_yesterday).context['data_dict']
 
-        url_start_tomorrow = f"{self.url_base}?create_date_start={tomorrow.strftime('%Y%m%d')}"
+        url_start_tomorrow = f"{self.url_base}?create_date_start={tomorrow.strftime('%Y-%m-%d')}"
         start_tomorrow_response = self.client.get(url_start_tomorrow).context['data_dict']
 
-        url_end_yesterday = f"{self.url_base}?create_date_end={yesterday.strftime('%Y%m%d')}"
+        url_end_yesterday = f"{self.url_base}?create_date_end={yesterday.strftime('%Y-%m-%d')}"
         end_yesterday_response = self.client.get(url_end_yesterday).context['data_dict']
 
-        url_end_tomorrow = f"{self.url_base}?create_date_end={tomorrow.strftime('%Y%m%d')}"
+        url_end_tomorrow = f"{self.url_base}?create_date_end={tomorrow.strftime('%Y-%m-%d')}"
         end_tomorrow_response = self.client.get(url_end_tomorrow).context['data_dict']
 
         # sanity check
@@ -630,9 +618,55 @@ class CRT_FILTER_Tests(TestCase):
 
         self.assertEquals(report_len, 1)
 
+    def test_servicemember_filter(self):
+        servicemember_filter = 'servicemember=yes'
+        response = self.client.get(f'{self.url_base}?{servicemember_filter}')
+        reports = response.context['data_dict']
+        expected_reports = Report.objects.filter(servicemember='yes').count()
+
+        report_len = len(reports)
+
+        self.assertEquals(report_len, expected_reports)
+
+    def test_hatecrime_filter(self):
+        filter_ = 'hate_crime=yes'
+        response = self.client.get(f'{self.url_base}?{filter_}')
+        reports = response.context['data_dict']
+        expected_reports = Report.objects.filter(hate_crime='yes').count()
+
+        report_len = len(reports)
+
+        self.assertEquals(report_len, expected_reports)
+
+    def test_profile_filters(self):
+        """
+        Results filtered by assigned_section set in profile if no assigned_section provided
+        """
+        Profile.objects.create(intake_filters='IER', user_id=self.user.id)
+        response = self.client.get(f'{self.url_base}')
+        reports = response.context['data_dict']
+
+        # No IER reports exist so none should be returned when our profile is set to
+        self.assertEquals(Report.objects.filter(assigned_section='IER').count(), 0)
+        self.assertEquals(len(reports), 0)
+
+    def test_profile_filters_override(self):
+        """
+        Results filtered by provided assigned_section, bypassing profile filter
+        """
+        Profile.objects.create(intake_filters='IER', user_id=self.user.id)
+        filter_ = 'assigned_section=ADM'
+        response = self.client.get(f'{self.url_base}?{filter_}')
+        reports = response.context['data_dict']
+
+        # We've specified ADM as a query param, we should only see reports from that section
+        expected_reports = Report.objects.filter(assigned_section='ADM').count()
+        self.assertEquals(len(reports), expected_reports)
+
 
 class Validation_Form_Tests(TestCase):
     """Confirming validation on the server level, required fields etc"""
+
     def test_required_protected_class(self):
         form = ProtectedClassForm(data={
             'other_class': '',
@@ -647,13 +681,10 @@ class Validation_Form_Tests(TestCase):
         })
         self.assertTrue(f'<ul class="errorlist"><li>{VIOLATION_SUMMARY_ERROR}' in str(form.errors))
 
-    def test_required_primary_reason_hatecrime(self):
+    def test_required_primary_reason(self):
         form = PrimaryReason(data={
-            'hatecrimes_trafficking_set': None,
             'primary_complaint': '',
         })
-        # ensure Hatecrime is not in error list
-        self.assertFalse('hatecrimes_trafficking<ul class="errorlist"><li>' in str(form.errors))
         self.assertTrue(f'<ul class="errorlist"><li>{PRIMARY_COMPLAINT_ERROR}' in str(form.errors))
 
     def test_required_servicemember(self):
@@ -801,7 +832,7 @@ class ContactValidationTests(TestCase):
         self.assertFalse(form.is_valid())
         self.assertEquals(
             form.errors,
-            {'contact_phone': ['Enter a valid value.']}
+            {'contact_phone': [CONTACT_PHONE_INVALID_MESSAGE]}
         )
 
     def test_phone_too_short(self):
@@ -814,7 +845,7 @@ class ContactValidationTests(TestCase):
             phone.full_clean()
         except ValidationError as err:
             phone_error_message = err.message_dict['contact_phone']
-            self.assertTrue(phone_error_message == ['Enter a valid value.'])
+            self.assertTrue(phone_error_message == [CONTACT_PHONE_INVALID_MESSAGE])
 
     def test_international_phone(self):
         phone = Report(
@@ -853,7 +884,7 @@ class Complaint_Update_Tests(TestCase):
         test_report.location_city_town = 'Cleveland'
         test_report.location_state = 'OH'
         test_report.assigned_section = test_report.assign_section()
-        test_report.status = 'new'
+        test_report.status = 'open'
         test_report.save()
 
         self.test_report = test_report
@@ -870,16 +901,27 @@ class Complaint_Update_Tests(TestCase):
         self.user.delete()
 
     def test_update_status_property(self):
-        self.form_data.update({'status': 'open'})
-        self.assertTrue(self.test_report.status == 'new')
+        self.form_data.update({'status': 'new'})
+        self.assertTrue(self.test_report.status == 'open')
         response = self.client.post(self.url, self.form_data, follow=True)
-        self.assertTrue(response.context['data'].status == 'open')
+        self.assertTrue(response.context['data'].status == 'new')
 
     def test_update_assigned_section_property(self):
         self.form_data.update({'assigned_section': 'VOT'})
         response = self.client.post(self.url, self.form_data, follow=True)
 
         self.assertTrue(response.context['data'].assigned_section == 'VOT')
+
+    def test_if_status_closed_assignee_must_be_empty(self):
+        """If status is closed, existing assignee must be removed"""
+        self.test_report.assigned_to = self.user
+        self.test_report.save()
+
+        self.form_data.update({'status': 'closed'})
+        self.client.post(self.url, self.form_data, follow=True)
+
+        self.test_report.refresh_from_db()
+        self.assertIsNone(self.test_report.assigned_to)
 
 
 class ProFormTest(TestCase):
@@ -928,7 +970,6 @@ class TestIntakeFormat(TestCase):
     def setUp(self):
         self.form_data_dict = copy.deepcopy(SAMPLE_REPORT)
         self.form_data_dict['protected_class'] = ProtectedClass.objects.none()
-        self.form_data_dict['hatecrimes_trafficking'] = HateCrimesandTrafficking.objects.none()
 
     def test_intake_save_web(self):
         data, saved_object = save_form(self.form_data_dict, intake_format='web')

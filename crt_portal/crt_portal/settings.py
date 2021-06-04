@@ -10,11 +10,11 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/2.2/ref/settings/
 """
 
-import os
 import json
+import os
 
 import boto3
-
+import django.conf.locale
 from django.utils.log import DEFAULT_LOGGING
 from django.utils.translation import gettext_lazy as _
 
@@ -25,6 +25,13 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # We are running the testing environment with UNDEFINED.
 # For cloud.gov the ENV must be set in the manifests
 environment = os.environ.get('ENV', 'UNDEFINED')
+USE_LOCALSTACK = os.environ.get('USE_LOCALSTACK', None)
+
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = os.environ.get('DEBUG', False)
+ENABLE_DEBUG_TOOLBAR = os.environ.get('ENABLE_DEBUG_TOOLBAR', False)
+MAINTENANCE_MODE = os.environ.get('MAINTENANCE_MODE', False)
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
@@ -54,10 +61,6 @@ if environment != 'LOCAL':
         }
     }
 
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
-
 # production hosts are specified later
 ALLOWED_HOSTS = [
     'crt-portal.app.cloud.gov',
@@ -79,6 +82,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.postgres',
+    'actstream',
     'cts_forms',
     'compressor',
     'compressor_toolkit',
@@ -86,7 +90,7 @@ INSTALLED_APPS = [
     'formtools',
     # 'django_auth_adfs' in production only
     'crequest',
-    'actstream',
+    'tms'
 ]
 SITE_ID = 1
 
@@ -146,10 +150,32 @@ LOGIN_REDIRECT_URL = '/'
 # Internationalization
 # https://docs.djangoproject.com/en/2.2/topics/i18n/
 
+TL_INFO = {
+    'tl': {
+        'bidi': True,
+        'code': 'tl',
+        'name': 'Tagalog',
+        'name_local': 'Tagalog',
+    }
+}
+LANG_INFO = dict(django.conf.locale.LANG_INFO, **TL_INFO)
+django.conf.locale.LANG_INFO = LANG_INFO
+
 LANGUAGE_CODE = 'en-us'
 LANGUAGES = [
     ('es', _('Spanish')),
     ('en', _('English')),
+    ('zh-hant', _('Chinese Traditional')),
+    ('zh-hans', _('Chinese Simplified')),
+    ('vi', _('Vietnamese')),
+    ('ko', _('Korean')),
+    ('tl', _('Tagalog')),
+]
+
+# Set LOCALE_PATHS to ensure that our translations are given precedence
+# https://docs.djangoproject.com/en/2.2/topics/i18n/translation/#how-django-discovers-translations
+LOCALE_PATHS = [
+    os.path.join(BASE_DIR, 'cts_forms', 'locale'),
 ]
 
 TIME_ZONE = 'America/New_York'
@@ -159,6 +185,48 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = True
+
+# Set to True later in settings if we've successfully configured an email backend
+EMAIL_ENABLED = False
+
+TMS_WEBHOOK_ALLOWED_CIDR_NETS = os.environ.get('TMS_WEBHOOK_ALLOWED_CIDR_NETS', '').split(';')
+TMS_STAGING_ENDPOINT = "https://stage-tms.govdelivery.com"
+TMS_PRODUCTION_ENDPOINT = "https://tms.govdelivery.com"
+# Since there's no sandbox, we'll limit outbound recipients to these addresses
+# to avoid un-intentional emails
+RESTRICT_EMAIL_RECIPIENTS_TO = os.environ.get('RESTRICT_EMAIL_RECIPIENTS_TO', '').split(';')
+
+if environment not in ['LOCAL', 'UNDEFINED']:
+    # govDelivery TMS settings
+    EMAIL_BACKEND = 'tms.backend.TMSEmailBackend'
+    TMS_AUTH_TOKEN = os.environ.get('TMS_AUTH_TOKEN', '')
+    TMS_TARGET_ENDPOINT = TMS_STAGING_ENDPOINT
+
+    if TMS_AUTH_TOKEN and TMS_WEBHOOK_ALLOWED_CIDR_NETS:
+        EMAIL_ENABLED = True
+
+    if environment == 'PRODUCTION':
+        TMS_TARGET_ENDPOINT = TMS_PRODUCTION_ENDPOINT
+        RESTRICT_EMAIL_RECIPIENTS_TO = []
+
+# Private S3 bucket configuration
+if environment in ['PRODUCTION', 'STAGE', 'DEVELOP']:
+    for service in vcap['s3']:
+        if service['instance_name'] == 'sso-creds':
+            priv_s3_creds = service['credentials']
+
+    PRIV_S3_BUCKET = priv_s3_creds['bucket']
+    PRIV_S3_REGION = priv_s3_creds['region']
+    PRIV_S3_ACCESS_KEY_ID = priv_s3_creds['access_key_id']
+    PRIV_S3_SECRET_ACCESS_KEY = priv_s3_creds['secret_access_key']
+    PRIV_S3_ENDPOINT = priv_s3_creds['endpoint']
+    PRIV_S3_ENDPOINT_URL = f'https://{PRIV_S3_ENDPOINT}'
+else:
+    PRIV_S3_BUCKET = 'crt-private'
+    PRIV_S3_REGION = 'region'
+    PRIV_S3_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', 'AWSAKID')
+    PRIV_S3_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', 'AWSSAK')
+    PRIV_S3_ENDPOINT_URL = 'http://localhost:4566'
 
 # for AUTH, probably want to add stage in the future
 if environment == 'PRODUCTION':
@@ -177,22 +245,15 @@ if environment == 'PRODUCTION':
     )
     MIDDLEWARE.append('django_auth_adfs.middleware.LoginRequiredMiddleware')
 
-    for service in vcap['s3']:
-        if service['instance_name'] == 'sso-creds':
-            # Private AWS bucket
-            sso_creds = service["credentials"]
-
-    SSO_BUCKET = sso_creds['bucket']
-    SSO_REGION = sso_creds['region']
     client_sso = boto3.client(
         's3',
-        SSO_REGION,
-        aws_access_key_id=sso_creds['access_key_id'],
-        aws_secret_access_key=sso_creds['secret_access_key'],
+        PRIV_S3_REGION,
+        aws_access_key_id=PRIV_S3_ACCESS_KEY_ID,
+        aws_secret_access_key=PRIV_S3_SECRET_ACCESS_KEY,
     )
 
     with open('ca_bundle.pem', 'wb') as DATA:
-        client_sso.download_file(SSO_BUCKET, 'sso/ca_bundle.pem', 'ca_bundle.pem')
+        client_sso.download_file(PRIV_S3_BUCKET, 'sso/ca_bundle.pem', 'ca_bundle.pem')
 
     # See settings reference https://django-auth-adfs.readthedocs.io/en/latest/settings_ref.html
     AUTH_ADFS = {
@@ -207,9 +268,12 @@ if environment == 'PRODUCTION':
         "USERNAME_CLAIM": AUTH_USERNAME_CLAIM,
         "GROUP_CLAIM": AUTH_GROUP_CLAIM,
         'LOGIN_EXEMPT_URLS': [
-            '',
-            'report/',
-            'robots.txt',
+            '^$',
+            '^report',
+            '^robots.txt',
+            '^privacy-policy',
+            '^i18n',
+            '^email',
         ],
     }
 
@@ -226,7 +290,7 @@ if environment == 'PRODUCTION':
 
 STATIC_URL = '/static/'
 
-if environment != 'LOCAL':
+if environment not in ['LOCAL', 'UNDEFINED']:
     for service in vcap['s3']:
         if service['instance_name'] == 'crt-s3':
             # Public AWS S3 bucket for the app
@@ -246,8 +310,9 @@ if environment != 'LOCAL':
     AWS_QUERYSTRING_AUTH = False
     STATIC_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/{AWS_LOCATION}/'
     STATICFILES_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    DEFAULT_FILE_STORAGE = 'cts_forms.storages.PrivateS3Storage'
     AWS_DEFAULT_ACL = 'public-read'
+    AWS_IS_GZIPPED = True
 
 if environment in ['PRODUCTION', 'STAGE', 'DEVELOP']:
     MIDDLEWARE.append('csp.middleware.CSPMiddleware')
@@ -257,6 +322,10 @@ if environment in ['PRODUCTION', 'STAGE', 'DEVELOP']:
         bucket,
         'www.civilrights.justice.gov',
         'civilrights.justice.gov',
+        'https://touchpoints.app.cloud.gov',
+        'https://dap.digitalgov.gov',
+        'https://www.google-analytics.com',
+        'https://www.googletagmanager.com/',
     )
     # headers required for security
     SESSION_COOKIE_SECURE = True
@@ -273,6 +342,19 @@ if environment in ['PRODUCTION', 'STAGE', 'DEVELOP']:
         'www.civilrights.justice.gov',
         'civilrights.justice.gov',
         'https://dap.digitalgov.gov',
+        'https://www.google-analytics.com',
+        'https://touchpoints.app.cloud.gov',
+        'https://www.googletagmanager.com/',
+    )
+    CSP_CONNECT_SRC = (
+        "'self'",
+        bucket,
+        'www.civilrights.justice.gov',
+        'civilrights.justice.gov',
+        'https://dap.digitalgov.gov',
+        'https://www.google-analytics.com',
+        'https://touchpoints.app.cloud.gov',
+        'https://www.googletagmanager.com/',
     )
     CSP_IMG_SRC = allowed_sources
     CSP_MEDIA_SRC = allowed_sources
@@ -284,7 +366,16 @@ if environment in ['PRODUCTION', 'STAGE', 'DEVELOP']:
         bucket,
         'www.civilrights.justice.gov',
         'civilrights.justice.gov',
-        "'unsafe-inline'"
+        "'unsafe-inline'",
+        'https://fonts.googleapis.com',
+    )
+    CSP_FONT_SRC = (
+        "'self'",
+        bucket,
+        'www.civilrights.justice.gov',
+        'civilrights.justice.gov',
+        "'unsafe-inline'",
+        'https://fonts.gstatic.com',
     )
     CSP_INCLUDE_NONCE_IN = ['script-src']
 
@@ -328,10 +419,12 @@ DEFAULT_LOGGING['handlers']['console']['filters'] = []
 LOGGING = {
     'disable_existing_loggers': False,
     'version': 1,
+    "formatters": {"json": {"()": "pythonjsonlogger.jsonlogger.JsonFormatter"}},
     'handlers': {
         'console': {
             # logging handler that outputs log messages to terminal
             'class': 'logging.StreamHandler',
+            "formatter": "json",
             'level': 'INFO',  # message level to be written to console
         },
     },
@@ -352,5 +445,20 @@ LOGGING = {
     },
 }
 
+AV_SCAN_URL = os.getenv('AV_SCAN_URL')
+AV_SCAN_MAX_ATTEMPTS = 10
+
+ENABLE_LOCAL_ATTACHMENT_STORAGE = False
+if USE_LOCALSTACK:
+    from .localstack_settings import *  # noqa: F401,F403
+elif environment == 'LOCAL':
+    ENABLE_LOCAL_ATTACHMENT_STORAGE = True
+
 if environment == 'LOCAL':
     from .local_settings import *  # noqa: F401,F403
+
+# Django debug toolbar setup
+if ENABLE_DEBUG_TOOLBAR:
+    INSTALLED_APPS += ['debug_toolbar', ]
+    MIDDLEWARE = ['debug_toolbar.middleware.DebugToolbarMiddleware', ] + MIDDLEWARE
+    DEBUG_TOOLBAR_CONFIG = {'SHOW_TOOLBAR_CALLBACK': lambda _: True}
