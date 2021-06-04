@@ -1,3 +1,14 @@
+This repo is an archival copy of the code that runs [civilrights.justice.gov](https://civilrights.justice.gov/). 
+
+In order to be more responsive to the public’s changing communication needs and the increased reporting volume,the Civil Rights Division, in close collaboration with 18F, launched a user-friendly online submission experience at [civilrights.justice.gov](https://civilrights.justice.gov/). The project has transformed the way the Civil Rights Division collects, sorts, and responds to public reports of civil rights violations.
+
+See the project in it's new home:
+    https://github.com/usdoj-crt/crt-portal
+
+Here is a [blog post](https://18f.gsa.gov/2020/07/07/transforming-how-dojs-civil-rights-division-engages-with-the-public/) about the launch of this project with more details. 
+
+
+
 [![CircleCI](https://circleci.com/gh/usdoj-crt/crt-portal.svg?style=svg)](https://circleci.com/gh/usdoj-crt/crt-portal)
 
 ## Contents
